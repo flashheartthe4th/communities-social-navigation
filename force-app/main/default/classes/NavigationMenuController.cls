@@ -29,54 +29,24 @@ public with sharing class NavigationMenuController {
   }
 
   @AuraEnabled(Cacheable=true)
-  public static Map<String, Object> getConnectNavigationItems(String menuName, String communityId) {
-    String baseUrl = Url.getSalesforceBaseUrl().toExternalForm();
+  public static ConnectApi.NavigationMenuItemCollection getConnectNavigationItems(String menuName, String communityId,boolean includeImageUrl,boolean addHomeMenuItem) {
+    ConnectApi.NavigationMenuItemCollection navigationItems = new ConnectApi.NavigationMenuItemCollection();
 
-    List<NavigationLinkSet> navigationLinkSets = [
-      SELECT Id
-      FROM NavigationLinkSet
-      WHERE DeveloperName = :menuName
-      WITH SECURITY_ENFORCED
-      LIMIT 1
-    ];
-    NavigationLinkSet navigationLinkSet = (navigationLinkSets.size() == 1)
-      ? navigationLinkSets.get(0)
-      : null;
-
-    // USe string formatters to create the callout url
-    String restEndpointTemplate = '{0}/services/data/v48.0/connect/communities/{1}/navigation-menu/navigation-menu-items?navigationLinkSetId={2}&includeImageUrl=true&addHomeMenuItem=false';
-    List<Object> parameters = new List<Object>{ baseUrl, communityId, navigationLinkSet.Id };
-    String restEndpointFormatted = String.format(restEndpointTemplate, parameters);
-
-    // Build the HttpRequest
-    HttpRequest httpRequest = new HttpRequest();
-    httpRequest.setMethod('GET');
-
-    // Use the current users sessionId to authorize the transaction
-    // the guest user must be API enabled
-    String sessionId = UserInfo.getSessionId();
-    httpRequest.setHeader('Authorization', 'OAuth ' + sessionId);
-    httpRequest.setHeader('Authorization', 'Bearer ' + sessionId);
-    system.debug(sessionId);
-    httpRequest.setEndpoint(restEndpointFormatted);
-
-    Map<String, Object> navigationItems = new Map<String, Object>();
     try {
-      Http http = new Http();
-      HttpResponse httpResponse = http.send(httpRequest);
-      if (httpResponse.getStatusCode() == 200) {
-        Map<String, Object> response = (Map<String, Object>) JSON.deserializeUntyped(
-          httpResponse.getBody()
+        navigationItems = ConnectApi.NavigationMenu.getCommunityNavigationMenu(
+            communityId,
+            null, //you can specify the nav link set Id OR the menuName
+            menuName, //menuName is more portable between environments (e.g. Scratch & Sandbox)
+            ConnectApi.publishStatus.Draft, //permitted values are Live or Draft
+            includeImageUrl,
+            addHomeMenuItem,
+            new List<ConnectApi.NavigationMenuItemType>()
         );
-        navigationItems = response;
-      } else {
-        System.debug('ERROR: ' + httpResponse.getBody());
-        throw new CalloutException(httpResponse.getBody());
-      }
-      return navigationItems;
     } catch (System.Exception e) {
-      System.debug('ERROR: ' + e);
+        System.debug('ERROR: ' + e);
       throw e;
     }
+
+    return navigationItems;
   }
 }

@@ -1,3 +1,4 @@
+
 import { LightningElement, api, track, wire } from "lwc";
 
 // We can get our community Id for use in the callout
@@ -19,16 +20,12 @@ export default class SocialNavigation extends NavigationMixin(LightningElement) 
   communityId = communityId;
   communityBasePath = communityBasePath;
   error;
-  baseUrl;
-
-  connectedCallback() {
-    let urlString = window.location.href;
-    this.baseUrl = urlString.substring(0, urlString.indexOf("/s"));
-  }
 
   @wire(getConnectNavigationItems, {
     menuName: "$menuName",
-    communityId: "$communityId"
+    communityId: "$communityId",
+    includeImageUrl: true,
+    addHomeMenuItem: true
   })
   wiredNavigationItems({ error, data }) {
     if (data) {
@@ -50,16 +47,16 @@ export default class SocialNavigation extends NavigationMixin(LightningElement) 
     let item = this.menuItems.filter(menuItem => menuItem.label === selectedLabel)[0];
 
     // Distribute the action to the relevant mechanism for navigation
-    if (item.urlType === "ExternalLink") {
+    if (item.actionType === "ExternalLink") {
       this.navigateToExternalPage(item);
-    } else if (item.urlType === "InternalLink") {
+    } else if (item.actionType === "InternalLink") {
       this.navigateToInternalPage(item);
     }
   }
 
   // Open the external link
   navigateToExternalPage(item) {
-    const url = item.url;
+    const url = item.actionValue;
     if (item.target === "CurrentWindow") {
       this[NavigationMixin.Navigate]({
         type: "standard__webPage",
@@ -74,15 +71,10 @@ export default class SocialNavigation extends NavigationMixin(LightningElement) 
 
   // Open an internal link
   navigateToInternalPage(item) {
-    const url = this.communityBasePath + item.url;
-    Console.log(url);
-    const url2 = this.baseUrl + "/s" + item.url;
-    Console.log(url2);
-
     this[NavigationMixin.Navigate]({
       type: "standard__webPage",
       attributes: {
-        url: url2
+        url: item.actionValue
       }
     });
   }
